@@ -124,7 +124,7 @@ summarizeButton.addEventListener('click', async () => {
 - 출력 형식은 아래 예시와 동일하게 작성합니다.
 
 ※ 출력 형식:
-- 각 항목은 별도의 코드 블록( \\\`\\\`\\\` ) 안에 작성해 copy & paste가 용이하도록 합니다.
+- 각 항목은 별도의 코드 블록( \`\`\` ) 안에 작성해 copy & paste가 용이하도록 합니다.
 - 각 bullet 사이에는 빈 줄 없이 붙여서 작성합니다.
 
 ### 대화 내용 ###
@@ -132,18 +132,18 @@ ${transcript}
 
 ### 요약 결과 ###
 S (Subjective):
-\\\`\\\`\\\`
+\`\`\`
 [여기에 S 항목 요약]
-\\\`\\\`\\\`
+\`\`\`
 
 P (Plan):
-\\\`\\\`\\\`
+\`\`\`
 [여기에 P 항목 요약]
-\\\`\\\`\\\`
+\`\`\`
     `;
 
     try {
-        const response = await fetch(\`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}\`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -162,7 +162,7 @@ P (Plan):
         if (!response.ok) {
             const errorData = await response.json();
             console.error('API Error:', errorData);
-            throw new Error(\`API 요청 실패: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}\`);
+            throw new Error(`API 요청 실패: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
         }
 
         const data = await response.json();
@@ -172,8 +172,8 @@ P (Plan):
             console.log("Full API Response:", fullResponse);
 
             // Extract S and P sections using more robust regex
-            const sMatch = fullResponse.match(/S \\(Subjective\\):\\s*\\\`\\\`\\\`([\\s\\S]*?)\\\`\\\`\\\`/);
-            const pMatch = fullResponse.match(/P \\(Plan\\):\\s*\\\`\\\`\\\`([\\s\\S]*?)\\\`\\\`\\\`/);
+            const sMatch = fullResponse.match(/S \(Subjective\):\s*\`\`\`([\s\S]*?)\`\`\`/);
+            const pMatch = fullResponse.match(/P \(Plan\):\s*\`\`\`([\s\S]*?)\`\`\`/);
 
             subjectiveOutput.textContent = sMatch && sMatch[1] ? sMatch[1].trim() : 'S 항목을 추출하지 못했습니다.';
             planOutput.textContent = pMatch && pMatch[1] ? pMatch[1].trim() : 'P 항목을 추출하지 못했습니다.';
@@ -186,8 +186,8 @@ P (Plan):
 
     } catch (error) {
         console.error('Error during summarization:', error);
-        subjectiveOutput.textContent = \`오류: ${error.message}\`;
-        planOutput.textContent = \`오류: ${error.message}\`;
+        subjectiveOutput.textContent = `오류: ${error.message}`;
+        planOutput.textContent = `오류: ${error.message}`;
     }
 
     summarizeButton.disabled = false;
