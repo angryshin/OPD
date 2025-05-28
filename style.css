@@ -1,0 +1,98 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    background-color: #f4f4f4;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 80%;
+    max-width: 800px;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+.controls, .api-key-input {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 5px;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+textarea {
+    width: calc(100% - 22px); /* padding + border */
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    margin-bottom: 20px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.output-area {
+    background-color: #e9ecef;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    min-height: 50px;
+    white-space: pre-wrap; /* Ensures newlines are preserved */
+}
+
+.output-area pre {
+    margin: 0;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.output-area code {
+    display: block; /* Makes the code block fill the container */
+    padding: 0;
+}
+
+.api-key-input label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.api-key-input input[type="password"] {
+    padding: 8px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+    width: 50%;
+    margin-bottom: 5px;
+}
+
+.api-key-info {
+    font-size: 0.9em;
+    color: #666;
+} 

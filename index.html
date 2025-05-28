@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>음성인식 외래 기록지</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>음성인식 외래 기록지</h1>
+
+        <div class="controls">
+            <button id="startButton">음성 인식 시작</button>
+            <button id="stopButton" disabled>음성 인식 중지</button>
+        </div>
+
+        <h2>대화 내용</h2>
+        <textarea id="transcript" rows="10" placeholder="음성 인식 결과가 여기에 표시됩니다..."></textarea>
+
+        <button id="summarizeButton" disabled>SOAP 요약 (S & P)</button>
+
+        <h2>S (Subjective)</h2>
+        <div id="subjectiveOutput" class="output-area">
+            <pre><code>요약 결과가 여기에 표시됩니다.</code></pre>
+        </div>
+
+        <h2>P (Plan)</h2>
+        <div id="planOutput" class="output-area">
+            <pre><code>요약 결과가 여기에 표시됩니다.</code></pre>
+        </div>
+
+        <div class="api-key-input">
+            <label for="apiKey">Gemini API Key:</label>
+            <input type="password" id="apiKey" placeholder="여기에 API 키를 입력하세요">
+            <p class="api-key-info">API 키는 로컬 브라우저에만 저장되며, 서버로 전송되지 않습니다. <a href="https://aistudio.google.com/app/apikey" target="_blank">API 키 발급받기</a></p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
