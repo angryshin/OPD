@@ -20,9 +20,18 @@ const clearPlanButton = document.getElementById('clearPlanButton');
 const copyPlanButton = document.getElementById('copyPlanButton');
 const savePlanButton = document.getElementById('savePlanButton');
 
+// Recording status elements
+const recordingStatus = document.getElementById('recordingStatus');
+const statusText = document.getElementById('statusText');
+const recordingTime = document.getElementById('recordingTime');
+
 let recognition;
 let recognizing = false;
 let finalTranscript = '';
+let restartRecognition = false; // 자동 재시작 플래그
+let recognitionTimeout; // 타임아웃 핸들러
+let recordingStartTime; // 녹음 시작 시간
+let recordingTimer; // 녹음 시간 타이머
 
 // Load API Key from local storage
 apiKeyInput.value = localStorage.getItem('geminiApiKey') || '';
@@ -35,6 +44,9 @@ if ('webkitSpeechRecognition' in window) {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'ko-KR';
+    
+    // 추가 설정으로 안정성 향상
+    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
         recognizing = true;
@@ -43,19 +55,109 @@ if ('webkitSpeechRecognition' in window) {
         summarizeButton.disabled = true;
         transcriptTextarea.placeholder = '음성 인식 중...';
         finalTranscript = transcriptTextarea.value; // Preserve existing text
+        
+        // 상태 표시 업데이트
+        statusText.textContent = '녹음 중';
+        recordingStatus.classList.add('active');
+        recordingStartTime = Date.now();
+        recordingTimer = setInterval(updateRecordingTime, 1000);
+        
+        // 15분(900초) 후 자동 재시작 설정
+        recognitionTimeout = setTimeout(() => {
+            if (recognizing) {
+                console.log('음성 인식을 자동으로 재시작합니다.');
+                restartRecognition = true;
+                recognition.stop();
+            }
+        }, 900000); // 15분
     };
 
     recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
-        transcriptTextarea.placeholder = `오류: ${event.error}. 마이크 권한을 확인하거나 다른 브라우저를 사용해보세요.`;
-        recognizing = false;
-        startButton.disabled = false;
-        stopButton.disabled = true;
-        summarizeButton.disabled = transcriptTextarea.value.trim() === '';
+        
+        // 에러 타입에 따른 처리
+        let errorMessage = '';
+        switch(event.error) {
+            case 'network':
+                errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
+                break;
+            case 'audio-capture':
+                errorMessage = '마이크에 접근할 수 없습니다. 마이크 권한을 확인해주세요.';
+                break;
+            case 'not-allowed':
+                errorMessage = '마이크 권한이 거부되었습니다. 브라우저 설정에서 마이크 권한을 허용해주세요.';
+                break;
+            case 'no-speech':
+                errorMessage = '음성이 감지되지 않았습니다. 다시 시도해주세요.';
+                // no-speech 에러는 자동 재시작
+                if (recognizing) {
+                    restartRecognition = true;
+                    recognition.stop();
+                    return;
+                }
+                break;
+            case 'service-not-allowed':
+                errorMessage = '음성 인식 서비스가 허용되지 않았습니다.';
+                break;
+            default:
+                errorMessage = `오류: ${event.error}. 마이크 권한을 확인하거나 다른 브라우저를 사용해보세요.`;
+        }
+        
+        transcriptTextarea.placeholder = errorMessage;
+        
+        // 자동 재시작하지 않는 경우에만 UI 상태 변경
+        if (!restartRecognition) {
+            recognizing = false;
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            summarizeButton.disabled = transcriptTextarea.value.trim() === '';
+            
+            // 상태 표시 업데이트
+            statusText.textContent = '대기 중';
+            recordingStatus.classList.remove('active');
+            if (recordingTimer) {
+                clearInterval(recordingTimer);
+                recordingTimer = null;
+            }
+            recordingTime.textContent = '';
+        }
+        
+        if (recognitionTimeout) {
+            clearTimeout(recognitionTimeout);
+        }
     };
 
     recognition.onend = () => {
+        console.log('음성 인식이 종료되었습니다.');
+        
+        if (recognitionTimeout) {
+            clearTimeout(recognitionTimeout);
+        }
+        
+        // 자동 재시작이 필요한 경우
+        if (restartRecognition && recognizing) {
+            console.log('음성 인식을 재시작합니다...');
+            setTimeout(() => {
+                if (recognizing && restartRecognition) {
+                    try {
+                        recognition.start();
+                        restartRecognition = false;
+                    } catch (e) {
+                        console.error('음성 인식 재시작 실패:', e);
+                        recognizing = false;
+                        restartRecognition = false;
+                        startButton.disabled = false;
+                        stopButton.disabled = true;
+                        transcriptTextarea.placeholder = '음성 인식 재시작에 실패했습니다. 다시 시도해주세요.';
+                    }
+                }
+            }, 1000); // 1초 후 재시작
+            return;
+        }
+        
+        // 정상 종료인 경우
         recognizing = false;
+        restartRecognition = false;
         startButton.disabled = false;
         stopButton.disabled = true;
         summarizeButton.disabled = transcriptTextarea.value.trim() === '';
@@ -63,6 +165,15 @@ if ('webkitSpeechRecognition' in window) {
         if (finalTranscript.length > 0) {
             transcriptTextarea.value = finalTranscript;
         }
+        
+        // 상태 표시 업데이트
+        statusText.textContent = '대기 중';
+        recordingStatus.classList.remove('active');
+        if (recordingTimer) {
+            clearInterval(recordingTimer);
+            recordingTimer = null;
+        }
+        recordingTime.textContent = '';
     };
 
     recognition.onresult = (event) => {
@@ -95,11 +206,21 @@ startButton.addEventListener('click', () => {
     if (finalTranscript.length > 0 && !finalTranscript.endsWith('\n')) {
         finalTranscript += '\n'; // Ensure newline if starting from existing text
     }
-    recognition.start();
+    restartRecognition = false; // 수동 시작시 자동 재시작 플래그 초기화
+    try {
+        recognition.start();
+    } catch (e) {
+        console.error('음성 인식 시작 실패:', e);
+        alert('음성 인식을 시작할 수 없습니다. 잠시 후 다시 시도해주세요.');
+    }
 });
 
 stopButton.addEventListener('click', () => {
     if (!recognizing) return;
+    restartRecognition = false; // 수동 중지시 자동 재시작 방지
+    if (recognitionTimeout) {
+        clearTimeout(recognitionTimeout);
+    }
     recognition.stop();
 });
 
@@ -344,4 +465,24 @@ clearAllButton.addEventListener('click', () => {
 // Enable summarize button if there's text on load
 if (transcriptTextarea.value.trim() !== '') {
     summarizeButton.disabled = false;
+}
+
+// 녹음 시간 포맷팅 함수
+function formatRecordingTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+// 녹음 시간 업데이트 함수
+function updateRecordingTime() {
+    if (recordingStartTime) {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        recordingTime.textContent = formatRecordingTime(elapsed);
+    }
 } 

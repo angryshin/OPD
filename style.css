@@ -73,17 +73,27 @@ textarea {
     margin-bottom: 20px;
     min-height: 50px;
     white-space: pre-wrap; /* Ensures newlines are preserved */
+    word-wrap: break-word; /* Break long words */
+    overflow-wrap: break-word; /* Modern property for word breaking */
+    max-width: 100%; /* Ensure it doesn't exceed container width */
+    box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .output-area pre {
     margin: 0;
     font-family: monospace;
     font-size: 14px;
+    word-wrap: break-word; /* Break long words in pre elements */
+    overflow-wrap: break-word; /* Modern property for word breaking */
+    white-space: pre-wrap; /* Preserve whitespace and wrap */
 }
 
 .output-area code {
     display: block; /* Makes the code block fill the container */
     padding: 0;
+    word-wrap: break-word; /* Break long words in code elements */
+    overflow-wrap: break-word; /* Modern property for word breaking */
+    white-space: pre-wrap; /* Preserve whitespace and wrap */
 }
 
 .api-key-input label {
@@ -136,4 +146,35 @@ textarea {
 /* Make sure API Key input is last */
 .container > .api-key-input {
     margin-top: 30px; 
+}
+
+.recording-status {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+}
+
+.recording-status span {
+    display: inline-block;
+    margin-right: 15px;
+    font-weight: bold;
+}
+
+.recording-time {
+    color: #dc3545;
+    font-family: monospace;
+}
+
+.recording-status.active {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.8; }
+    100% { opacity: 1; }
 } 
