@@ -5,6 +5,20 @@ const summarizeButton = document.getElementById('summarizeButton');
 const subjectiveOutput = document.getElementById('subjectiveOutput').querySelector('code');
 const planOutput = document.getElementById('planOutput').querySelector('code');
 const apiKeyInput = document.getElementById('apiKey');
+const clearButton = document.getElementById('clearButton');
+const copyButton = document.getElementById('copyButton');
+const saveButton = document.getElementById('saveButton');
+const clearAllButton = document.getElementById('clearAllButton');
+
+// Buttons for Subjective Output
+const clearSubjectiveButton = document.getElementById('clearSubjectiveButton');
+const copySubjectiveButton = document.getElementById('copySubjectiveButton');
+const saveSubjectiveButton = document.getElementById('saveSubjectiveButton');
+
+// Buttons for Plan Output
+const clearPlanButton = document.getElementById('clearPlanButton');
+const copyPlanButton = document.getElementById('copyPlanButton');
+const savePlanButton = document.getElementById('savePlanButton');
 
 let recognition;
 let recognizing = false;
@@ -192,6 +206,139 @@ P (Plan):
 
     summarizeButton.disabled = false;
     summarizeButton.textContent = 'SOAP 요약 (S & P)';
+});
+
+clearButton.addEventListener('click', () => {
+    transcriptTextarea.value = '';
+    finalTranscript = ''; // Reset finalTranscript as well
+    summarizeButton.disabled = true;
+    transcriptTextarea.placeholder = '음성 인식 결과가 여기에 표시됩니다...';
+});
+
+copyButton.addEventListener('click', () => {
+    const textToCopy = transcriptTextarea.value;
+    if (!textToCopy) {
+        alert('복사할 내용이 없습니다.');
+        return;
+    }
+    navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+            alert('대화 내용이 클립보드에 복사되었습니다.');
+        })
+        .catch(err => {
+            console.error('Failed to copy text: ', err);
+            alert('내용 복사에 실패했습니다. 콘솔을 확인해주세요.');
+        });
+});
+
+saveButton.addEventListener('click', () => {
+    const textToSave = transcriptTextarea.value;
+    if (!textToSave) {
+        alert('저장할 내용이 없습니다.');
+        return;
+    }
+    const filename = `transcript_${new Date().toISOString().replace(/[-:.]/g, "").replace("T", "_").slice(0,15)}.txt`;
+    const blob = new Blob([textToSave], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href); // Clean up
+});
+
+// --- Subjective Output Actions ---
+clearSubjectiveButton.addEventListener('click', () => {
+    subjectiveOutput.textContent = '요약 결과가 여기에 표시됩니다.';
+});
+
+copySubjectiveButton.addEventListener('click', () => {
+    const textToCopy = subjectiveOutput.textContent;
+    if (!textToCopy || textToCopy === '요약 결과가 여기에 표시됩니다.') {
+        alert('복사할 S 내용이 없습니다.');
+        return;
+    }
+    navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+            alert('S (Subjective) 내용이 클립보드에 복사되었습니다.');
+        })
+        .catch(err => {
+            console.error('Failed to copy S text: ', err);
+            alert('S 내용 복사에 실패했습니다. 콘솔을 확인해주세요.');
+        });
+});
+
+saveSubjectiveButton.addEventListener('click', () => {
+    const textToSave = subjectiveOutput.textContent;
+    if (!textToSave || textToSave === '요약 결과가 여기에 표시됩니다.') {
+        alert('저장할 S 내용이 없습니다.');
+        return;
+    }
+    const filename = `subjective_summary_${new Date().toISOString().replace(/[-:.]/g, "").replace("T", "_").slice(0,15)}.txt`;
+    const blob = new Blob([textToSave], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+});
+
+// --- Plan Output Actions ---
+clearPlanButton.addEventListener('click', () => {
+    planOutput.textContent = '요약 결과가 여기에 표시됩니다.';
+});
+
+copyPlanButton.addEventListener('click', () => {
+    const textToCopy = planOutput.textContent;
+    if (!textToCopy || textToCopy === '요약 결과가 여기에 표시됩니다.') {
+        alert('복사할 P 내용이 없습니다.');
+        return;
+    }
+    navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+            alert('P (Plan) 내용이 클립보드에 복사되었습니다.');
+        })
+        .catch(err => {
+            console.error('Failed to copy P text: ', err);
+            alert('P 내용 복사에 실패했습니다. 콘솔을 확인해주세요.');
+        });
+});
+
+savePlanButton.addEventListener('click', () => {
+    const textToSave = planOutput.textContent;
+    if (!textToSave || textToSave === '요약 결과가 여기에 표시됩니다.') {
+        alert('저장할 P 내용이 없습니다.');
+        return;
+    }
+    const filename = `plan_summary_${new Date().toISOString().replace(/[-:.]/g, "").replace("T", "_").slice(0,15)}.txt`;
+    const blob = new Blob([textToSave], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+});
+
+// --- Clear All Action ---
+clearAllButton.addEventListener('click', () => {
+    // Clear transcript area
+    transcriptTextarea.value = '';
+    finalTranscript = '';
+    summarizeButton.disabled = true;
+    transcriptTextarea.placeholder = '음성 인식 결과가 여기에 표시됩니다...';
+
+    // Clear Subjective output
+    subjectiveOutput.textContent = '요약 결과가 여기에 표시됩니다.';
+
+    // Clear Plan output
+    planOutput.textContent = '요약 결과가 여기에 표시됩니다.';
+
+    alert('모든 내용이 지워졌습니다.');
 });
 
 // Enable summarize button if there's text on load

@@ -48,14 +48,22 @@ button:hover:not(:disabled) {
     background-color: #0056b3;
 }
 
+button.danger {
+    background-color: #dc3545; /* Red color for danger/destructive action */
+}
+
+button.danger:hover:not(:disabled) {
+    background-color: #c82333; /* Darker red on hover */
+}
+
 textarea {
     width: calc(100% - 22px); /* padding + border */
     padding: 10px;
     border-radius: 5px;
     border: 1px solid #ddd;
-    margin-bottom: 20px;
+    margin-bottom: 10px; /* Adjusted margin */
     font-size: 14px;
-    box-sizing: border-box;
+    resize: vertical;
 }
 
 .output-area {
@@ -95,4 +103,37 @@ textarea {
 .api-key-info {
     font-size: 0.9em;
     color: #666;
+}
+
+.transcript-actions {
+    text-align: right;
+    margin-bottom: 20px;
+}
+
+.transcript-actions button {
+    background-color: #6c757d;
+}
+
+.transcript-actions button:hover:not(:disabled) {
+    background-color: #5a6268;
+}
+
+.output-actions {
+    text-align: right;
+    margin-bottom: 20px;
+}
+
+.output-actions button {
+    background-color: #6c757d;
+    font-size: 14px; /* Smaller font for these actions */
+    padding: 8px 12px;
+}
+
+.output-actions button:hover:not(:disabled) {
+    background-color: #5a6268;
+}
+
+/* Make sure API Key input is last */
+.container > .api-key-input {
+    margin-top: 30px; 
 } 

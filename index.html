@@ -13,10 +13,17 @@
         <div class="controls">
             <button id="startButton">음성 인식 시작</button>
             <button id="stopButton" disabled>음성 인식 중지</button>
+            <button id="clearAllButton" class="danger">전체 내용 지우기</button>
         </div>
 
         <h2>대화 내용</h2>
         <textarea id="transcript" rows="10" placeholder="음성 인식 결과가 여기에 표시됩니다..."></textarea>
+
+        <div class="transcript-actions">
+            <button id="clearButton">내용 지우기</button>
+            <button id="copyButton">내용 복사</button>
+            <button id="saveButton">내용 저장 (.txt)</button>
+        </div>
 
         <button id="summarizeButton" disabled>SOAP 요약 (S & P)</button>
 
@@ -24,10 +31,20 @@
         <div id="subjectiveOutput" class="output-area">
             <pre><code>요약 결과가 여기에 표시됩니다.</code></pre>
         </div>
+        <div class="output-actions">
+            <button id="clearSubjectiveButton">S 내용 지우기</button>
+            <button id="copySubjectiveButton">S 내용 복사</button>
+            <button id="saveSubjectiveButton">S 내용 저장 (.txt)</button>
+        </div>
 
         <h2>P (Plan)</h2>
         <div id="planOutput" class="output-area">
             <pre><code>요약 결과가 여기에 표시됩니다.</code></pre>
+        </div>
+        <div class="output-actions">
+            <button id="clearPlanButton">P 내용 지우기</button>
+            <button id="copyPlanButton">P 내용 복사</button>
+            <button id="savePlanButton">P 내용 저장 (.txt)</button>
         </div>
 
         <div class="api-key-input">
