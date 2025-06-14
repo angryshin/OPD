@@ -202,26 +202,4 @@ textarea {
         transform: scale(1);
         box-shadow: 0 0 0 0 rgba(23, 162, 184, 0);
     }
-}
-
-.key-guide {
-    background-color: #f8f9fa;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 10px;
-    border: 1px solid #dee2e6;
-}
-
-.key-guide p {
-    margin: 5px 0;
-    font-size: 14px;
-    color: #495057;
-}
-
-.key-guide p:first-child {
-    color: #007bff;
-}
-
-.key-guide p:last-child {
-    color: #28a745;
 } 

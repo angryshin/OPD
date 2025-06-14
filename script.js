@@ -32,18 +32,13 @@ let restartRecognition = false;
 let recognitionTimeout;
 let recordingStartTime;
 let recordingTimer;
-let currentSpeaker = null;
 let isRecording = false;
 let pendingTranscript = '';
-let transcriptBuffer = [];
-let processingTimeout = null;
-
-// 🔧 새로운 상태 관리 변수들
-let speakerChangeRequested = false;
-let pendingSpeaker = null;
-let isProcessingTranscript = false;
-let transcriptQueue = [];
 let lastProcessedText = '';
+let isProcessingTranscript = false;
+let errorCount = 0;
+const MAX_ERROR_COUNT = 3;
+const RESTART_DELAY = 1000;
 
 // Load API Key from local storage
 apiKeyInput.value = localStorage.getItem('geminiApiKey') || '';
@@ -53,34 +48,32 @@ apiKeyInput.addEventListener('input', () => {
 
 if ('webkitSpeechRecognition' in window) {
     recognition = new webkitSpeechRecognition();
+    
+    // 음성 인식 설정 최적화
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'ko-KR';
+    recognition.maxAlternatives = 1;  // 대체 결과 수를 1로 제한하여 처리 속도 향상
     
-    // 음성 인식 설정 최적화
-    recognition.maxAlternatives = 3; // 대체 결과 수 증가
-    recognition.interimResults = true; // 중간 결과 활성화
-
     recognition.onstart = () => {
+        console.log('음성 인식 시작');
         recognizing = true;
         isRecording = true;
+        errorCount = 0;
+        
+        // UI 상태 업데이트
         startButton.disabled = true;
         stopButton.disabled = false;
         summarizeButton.disabled = true;
         transcriptTextarea.placeholder = '음성 인식 중...';
         
-        // 상태 표시 업데이트
+        // 녹음 상태 표시
         statusText.textContent = '녹음 중';
         recordingStatus.classList.add('active');
         recordingStartTime = Date.now();
         recordingTimer = setInterval(updateRecordingTime, 1000);
         
-        // 🔧 상태 초기화
-        speakerChangeRequested = false;
-        pendingSpeaker = null;
-        isProcessingTranscript = false;
-        
-        // 15분 후 자동 재시작 설정
+        // 15분 후 자동 재시작
         recognitionTimeout = setTimeout(() => {
             if (recognizing) {
                 console.log('음성 인식을 자동으로 재시작합니다.');
@@ -91,9 +84,9 @@ if ('webkitSpeechRecognition' in window) {
     };
 
     recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
+        console.error('음성 인식 오류:', event.error);
+        errorCount++;
         
-        // 에러 타입에 따른 처리
         let errorMessage = '';
         switch(event.error) {
             case 'network':
@@ -107,7 +100,7 @@ if ('webkitSpeechRecognition' in window) {
                 break;
             case 'no-speech':
                 errorMessage = '음성이 감지되지 않았습니다. 다시 시도해주세요.';
-                if (recognizing) {
+                if (recognizing && errorCount < MAX_ERROR_COUNT) {
                     restartRecognition = true;
                     recognition.stop();
                     return;
@@ -143,11 +136,11 @@ if ('webkitSpeechRecognition' in window) {
     };
 
     recognition.onend = () => {
-        console.log('음성 인식이 종료되었습니다.');
+        console.log('음성 인식 종료');
         isRecording = false;
         
-        // 🔧 개선된 pendingTranscript 처리
-        if (pendingTranscript && !isProcessingTranscript) {
+        // 마지막 pendingTranscript 처리
+        if (pendingTranscript) {
             processTranscriptSafely(pendingTranscript, true);
         }
         
@@ -155,9 +148,9 @@ if ('webkitSpeechRecognition' in window) {
             clearTimeout(recognitionTimeout);
         }
         
-        // 자동 재시작이 필요한 경우
+        // 자동 재시작 처리
         if (restartRecognition && recognizing) {
-            console.log('음성 인식을 재시작합니다...');
+            console.log('음성 인식 재시작 준비 중...');
             setTimeout(() => {
                 if (recognizing && restartRecognition) {
                     try {
@@ -172,11 +165,11 @@ if ('webkitSpeechRecognition' in window) {
                         transcriptTextarea.placeholder = '음성 인식 재시작에 실패했습니다. 다시 시도해주세요.';
                     }
                 }
-            }, 1000);
+            }, RESTART_DELAY);
             return;
         }
         
-        // 정상 종료인 경우
+        // 정상 종료 처리
         recognizing = false;
         restartRecognition = false;
         startButton.disabled = false;
@@ -184,7 +177,6 @@ if ('webkitSpeechRecognition' in window) {
         summarizeButton.disabled = transcriptTextarea.value.trim() === '';
         transcriptTextarea.placeholder = '음성 인식 결과가 여기에 표시됩니다...';
         
-        // 상태 표시 업데이트
         statusText.textContent = '대기 중';
         recordingStatus.classList.remove('active');
         if (recordingTimer) {
@@ -196,15 +188,17 @@ if ('webkitSpeechRecognition' in window) {
 
     recognition.onresult = (event) => {
         let interimTranscript = '';
+        
         for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const transcript = event.results[i][0].transcript;
+            
             if (event.results[i].isFinal) {
-                // 최종 결과 처리
-                processTranscriptSafely(event.results[i][0].transcript, true);
+                processTranscriptSafely(transcript, true);
             } else {
-                // 임시 결과 처리
-                interimTranscript += event.results[i][0].transcript;
+                interimTranscript += transcript;
             }
         }
+        
         if (interimTranscript) {
             processTranscriptSafely(interimTranscript, false);
         }
@@ -216,103 +210,103 @@ if ('webkitSpeechRecognition' in window) {
     alert('이 브라우저에서는 음성 인식을 지원하지 않습니다. Chrome 브라우저를 사용해보세요.');
 }
 
-// 🔧 개선된 키 입력 이벤트 리스너
-document.addEventListener('keydown', (event) => {
-    if (!recognizing) return;
-
-    if (event.key === '1' || event.key === '2') {
-        // 화자 변경 요청 설정
-        speakerChangeRequested = true;
-        pendingSpeaker = event.key === '1' ? '의사' : '환자/보호자';
-        
-        // 현재 진행 중인 임시 결과가 있으면 먼저 처리
-        if (pendingTranscript && !isProcessingTranscript) {
-            processTranscriptSafely(pendingTranscript, true);
-        }
-        
-        // 화자 변경 적용
-        applySpeakerChange();
-    }
-});
-
-// 🔧 새로운 화자 변경 적용 함수
-function applySpeakerChange() {
-    if (speakerChangeRequested && pendingSpeaker) {
-        currentSpeaker = pendingSpeaker;
-        
-        // 새로운 화자 표시 추가 (중복 방지)
-        const currentValue = transcriptTextarea.value;
-        const speakerPrefix = currentSpeaker + ': ';
-        
-        // 이미 같은 화자 표시가 있는지 확인
-        if (!currentValue.endsWith(speakerPrefix)) {
-            if (!currentValue.endsWith('\n') && currentValue.length > 0) {
-                transcriptTextarea.value += '\n';
-            }
-            transcriptTextarea.value += speakerPrefix;
-        }
-        
-        // 상태 초기화
-        speakerChangeRequested = false;
-        pendingSpeaker = null;
-        
-        console.log(`화자 변경: ${currentSpeaker}`);
-    }
-}
-
-startButton.addEventListener('click', async () => {
-    if (recognizing) return;
+function processTranscriptSafely(text, isFinal) {
+    if (!text.trim()) return;
     
-    if (!apiKeyInput.value.trim()) {
-        startButton.textContent = 'API 키 필요';
-        startButton.style.backgroundColor = '#ffc107';
-        startButton.style.color = '#212529';
-        setTimeout(() => {
-            startButton.textContent = '음성 인식 시작';
-            startButton.style.backgroundColor = '';
-            startButton.style.color = '';
-        }, 2000);
-        apiKeyInput.focus();
+    // 중복 처리 방지
+    if (text === lastProcessedText && isFinal) {
+        console.log('중복 텍스트 무시:', text);
         return;
     }
     
-    finalTranscript = transcriptTextarea.value;
-    if (finalTranscript.length > 0 && !finalTranscript.endsWith('\n')) {
-        finalTranscript += '\n';
+    // 처리 중인 경우 대기
+    if (isProcessingTranscript) {
+        console.log('처리 중, 대기:', text);
+        setTimeout(() => processTranscriptSafely(text, isFinal), 50);
+        return;
     }
     
-    // 🔧 모든 상태 초기화
-    currentSpeaker = null;
-    speakerChangeRequested = false;
-    pendingSpeaker = null;
-    isProcessingTranscript = false;
-    transcriptQueue = [];
-    lastProcessedText = '';
-    restartRecognition = false;
+    isProcessingTranscript = true;
     
     try {
-        recognition.start();
-    } catch (e) {
-        console.error('음성 인식 시작 실패:', e);
-        startButton.textContent = '시작 실패';
-        startButton.style.backgroundColor = '#dc3545';
-        setTimeout(() => {
-            startButton.textContent = '음성 인식 시작';
-            startButton.style.backgroundColor = '';
-        }, 2000);
+        if (isFinal) {
+            console.log('최종 결과 처리:', text);
+            lastProcessedText = text;
+            finalTranscript += text + '\n';
+        } else {
+            console.log('임시 결과 처리:', text);
+            pendingTranscript = text;
+        }
+        
+        updateDisplaySafely();
+    } finally {
+        isProcessingTranscript = false;
+    }
+}
+
+function updateDisplaySafely() {
+    try {
+        const cursorPosition = transcriptTextarea.selectionStart;
+        const displayText = finalTranscript + (pendingTranscript ? pendingTranscript : '');
+        
+        if (transcriptTextarea.value !== displayText) {
+            transcriptTextarea.value = displayText;
+            
+            if (cursorPosition <= displayText.length) {
+                transcriptTextarea.setSelectionRange(cursorPosition, cursorPosition);
+            }
+        }
+        
+        summarizeButton.disabled = transcriptTextarea.value.trim() === '';
+        transcriptTextarea.scrollTop = transcriptTextarea.scrollHeight;
+        
+    } catch (error) {
+        console.error('화면 업데이트 오류:', error);
+    }
+}
+
+// 녹음 시간 업데이트
+function updateRecordingTime() {
+    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+    recordingTime.textContent = formatRecordingTime(elapsed);
+}
+
+function formatRecordingTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+// 이벤트 리스너들
+startButton.addEventListener('click', async () => {
+    if (!recognizing) {
+        try {
+            await checkMicrophonePermission();
+            recognition.start();
+        } catch (error) {
+            console.error('음성 인식 시작 실패:', error);
+            alert('음성 인식을 시작할 수 없습니다. 마이크 권한을 확인해주세요.');
+        }
     }
 });
 
 stopButton.addEventListener('click', () => {
-    if (!recognizing) return;
-    restartRecognition = false; // 수동 중지시 자동 재시작 방지
-    if (recognitionTimeout) {
-        clearTimeout(recognitionTimeout);
+    if (recognizing) {
+        console.log('음성 인식 중지 요청');
+        
+        if (pendingTranscript) {
+            processTranscriptSafely(pendingTranscript, true);
+        }
+        
+        recognizing = false;
+        restartRecognition = false;
+        
+        try {
+            recognition.stop();
+        } catch (e) {
+            console.error('음성 인식 중지 오류:', e);
+        }
     }
-    recognition.stop();
-    
-    // 🔧 수동 중지 시에도 마이크 스트림 유지
-    // cleanupMicrophoneStream(); // 제거: 스트림을 유지하여 다음 사용 시 권한 팝업 방지
 });
 
 summarizeButton.addEventListener('click', async () => {
@@ -344,8 +338,8 @@ summarizeButton.addEventListener('click', async () => {
 ※ 작성 지침:
 - 각 항목은 짧고 명료한 bullet 형식으로 요약합니다.
 - 불필요하거나 반복적인 문장은 생략합니다.
-- 개인정보는 일반화하거나 가명 처리합니다.
 - 의사와 환자의 발화를 구분하여 분석하고 요약합니다.
+- 검사 수치에 대한 내용은 주로 의사가 말하며, 환자가 말하는 경우는 거의 없습니다.
 - 검사 수치 및 의학적 정보는 구체적으로 기술합니다.
 - 출력 형식은 아래 예시와 동일하게 작성합니다.
 
@@ -427,13 +421,7 @@ clearButton.addEventListener('click', () => {
     transcriptTextarea.placeholder = '음성 인식 결과가 여기에 표시됩니다...';
     
     // 🔧 새로운 상태 변수들도 초기화
-    currentSpeaker = null;
-    speakerChangeRequested = false;
-    pendingSpeaker = null;
     pendingTranscript = '';
-    transcriptBuffer = [];
-    transcriptQueue = [];
-    lastProcessedText = '';
     
     // 진행 중인 타이머 정리
     if (processingTimeout) {
@@ -624,13 +612,7 @@ clearAllButton.addEventListener('click', () => {
     planOutput.textContent = '요약 결과가 여기에 표시됩니다.';
     
     // 🔧 새로운 상태 변수들도 초기화
-    currentSpeaker = null;
-    speakerChangeRequested = false;
-    pendingSpeaker = null;
     pendingTranscript = '';
-    transcriptBuffer = [];
-    transcriptQueue = [];
-    lastProcessedText = '';
     
     // 진행 중인 타이머 정리
     if (processingTimeout) {
@@ -645,139 +627,6 @@ clearAllButton.addEventListener('click', () => {
 // Enable summarize button if there's text on load
 if (transcriptTextarea.value.trim() !== '') {
     summarizeButton.disabled = false;
-}
-
-// 🔧 개선된 음성 인식 결과 처리 함수
-function processTranscriptSafely(text, isFinal) {
-    // 중복 처리 방지
-    if (isProcessingTranscript) {
-        transcriptQueue.push({ text, isFinal });
-        return;
-    }
-    
-    // 같은 텍스트 중복 처리 방지
-    if (text === lastProcessedText && isFinal) {
-        return;
-    }
-    
-    isProcessingTranscript = true;
-    
-    try {
-        if (isFinal) {
-            // 최종 결과 처리
-            lastProcessedText = text;
-            
-            // 화자가 설정되지 않은 경우 기본값 설정
-            if (!currentSpeaker) {
-                currentSpeaker = '환자/보호자';
-                console.log('화자가 설정되지 않아 기본값(환자/보호자)으로 설정');
-            }
-            
-            // 텍스트가 비어있지 않은 경우에만 처리
-            if (text.trim()) {
-                const transcript = currentSpeaker + ': ' + text.trim();
-                addToTranscriptBuffer(transcript);
-            }
-            
-            pendingTranscript = '';
-        } else {
-            // 임시 결과 처리
-            pendingTranscript = text;
-            updateDisplaySafely();
-        }
-    } finally {
-        isProcessingTranscript = false;
-        
-        // 큐에 대기 중인 작업 처리
-        processTranscriptQueue();
-    }
-}
-
-// 🔧 큐 처리 함수
-function processTranscriptQueue() {
-    if (transcriptQueue.length > 0 && !isProcessingTranscript) {
-        const nextItem = transcriptQueue.shift();
-        processTranscriptSafely(nextItem.text, nextItem.isFinal);
-    }
-}
-
-// 🔧 개선된 버퍼 추가 함수
-function addToTranscriptBuffer(transcript) {
-    transcriptBuffer.push(transcript);
-    processBufferSafely();
-}
-
-// 🔧 개선된 버퍼 처리 함수
-function processBufferSafely() {
-    // 기존 타이머가 있으면 취소하지 않고 연장
-    if (processingTimeout) {
-        clearTimeout(processingTimeout);
-    }
-
-    processingTimeout = setTimeout(() => {
-        if (transcriptBuffer.length > 0) {
-            // 버퍼의 모든 내용을 한 번에 처리
-            const newText = transcriptBuffer.join('\n') + '\n';
-            finalTranscript += newText;
-            transcriptBuffer = [];
-            updateDisplaySafely();
-            
-            console.log('버퍼 처리 완료:', transcriptBuffer.length, '개 항목');
-        }
-        processingTimeout = null;
-    }, 200); // 200ms로 증가하여 안정성 향상
-}
-
-// 🔧 안전한 화면 업데이트 함수
-function updateDisplaySafely() {
-    try {
-        // 현재 커서 위치 저장
-        const cursorPosition = transcriptTextarea.selectionStart;
-        
-        // 화면 업데이트
-        const displayText = finalTranscript + 
-            (currentSpeaker && pendingTranscript ? currentSpeaker + ': ' + pendingTranscript : 
-             pendingTranscript ? pendingTranscript : '');
-        
-        // 내용이 실제로 변경된 경우에만 업데이트
-        if (transcriptTextarea.value !== displayText) {
-            transcriptTextarea.value = displayText;
-            
-            // 커서 위치 복원 (가능한 경우)
-            if (cursorPosition <= displayText.length) {
-                transcriptTextarea.setSelectionRange(cursorPosition, cursorPosition);
-            }
-        }
-        
-        // 요약 버튼 상태 업데이트
-        summarizeButton.disabled = transcriptTextarea.value.trim() === '';
-        
-        // 스크롤을 맨 아래로
-        transcriptTextarea.scrollTop = transcriptTextarea.scrollHeight;
-        
-    } catch (error) {
-        console.error('화면 업데이트 오류:', error);
-    }
-}
-
-// 녹음 시간 포맷팅 함수
-function formatRecordingTime(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (hours > 0) {
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
-// 녹음 시간 업데이트 함수
-function updateRecordingTime() {
-    if (recordingStartTime) {
-        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-        recordingTime.textContent = formatRecordingTime(elapsed);
-    }
 }
 
 // 🔧 마이크 권한 확인 및 요청 함수
