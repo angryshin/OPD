@@ -40,6 +40,21 @@ let errorCount = 0;
 const MAX_ERROR_COUNT = 3;
 const RESTART_DELAY = 1000;
 
+// Extracts S and P sections from the API response text
+function extractSoapSections(responseText) {
+    const sMatch = responseText.match(/S \(Subjective\):\s*```([\s\S]*?)```/);
+    const pMatch = responseText.match(/P \(Plan\):\s*```([\s\S]*?)```/);
+
+    return {
+        subjective: sMatch && sMatch[1] ? sMatch[1].trim() : null,
+        plan: pMatch && pMatch[1] ? pMatch[1].trim() : null,
+    };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports.extractSoapSections = extractSoapSections;
+}
+
 // Load API Key from local storage
 apiKeyInput.value = localStorage.getItem('geminiApiKey') || '';
 apiKeyInput.addEventListener('input', () => {
@@ -391,12 +406,9 @@ P (Plan):
             const fullResponse = data.candidates[0].content.parts[0].text;
             console.log("Full API Response:", fullResponse);
 
-            // Extract S and P sections using more robust regex
-            const sMatch = fullResponse.match(/S \(Subjective\):\s*\`\`\`([\s\S]*?)\`\`\`/);
-            const pMatch = fullResponse.match(/P \(Plan\):\s*\`\`\`([\s\S]*?)\`\`\`/);
-
-            subjectiveOutput.textContent = sMatch && sMatch[1] ? sMatch[1].trim() : 'S 항목을 추출하지 못했습니다.';
-            planOutput.textContent = pMatch && pMatch[1] ? pMatch[1].trim() : 'P 항목을 추출하지 못했습니다.';
+            const sections = extractSoapSections(fullResponse);
+            subjectiveOutput.textContent = sections.subjective || 'S 항목을 추출하지 못했습니다.';
+            planOutput.textContent = sections.plan || 'P 항목을 추출하지 못했습니다.';
 
         } else {
             console.error('Invalid API response structure:', data);
